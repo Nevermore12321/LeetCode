@@ -1,6 +1,6 @@
 package main
 
-import "program-algorithm/stackAndQueue"
+import "program-algorithm/sortAlgorithm"
 
 func main() {
 
@@ -8,5 +8,7 @@ func main() {
 	//lib.LinkListTest()
 	//lib.StackTest()
 	//stackAndQueue.MinStackTest()
-	stackAndQueue.TwoStackQueueTest()
+	//stackAndQueue.TwoStackQueueTest()
+	//stackAndQueue.ReverseTest()
+	sortAlgorithm.PrintOddTimesNums2Test()
 }
