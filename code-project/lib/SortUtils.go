@@ -44,18 +44,24 @@ func GenerateNearlyOrderedArray(length, swapTimes int) []int {
 */
 func SortDuration(mySort func([]int), SortName string) {
 	tinyArr := GenerateNearlyOrderedArray(1000, 1000)
-	hugeArr := GenerateNearlyOrderedArray(100000, 10000)
+	hugeArr := GenerateNearlyOrderedArray(100000, 10)
+	hugaArrRand := GenerateNearlyOrderedArray(100000, 100000)
 
 	fmt.Println(SortName, ":")
 
 	curTime := time.Now()
 	mySort(tinyArr)
 	durTime := time.Now().Sub(curTime).Seconds()
-	fmt.Printf("\t1000 elements:  %v seconds \n", durTime)
+	fmt.Printf("\t1000 elements and 1000 random:  %v seconds \n", durTime)
 
 	curTime = time.Now()
 	mySort(hugeArr)
 	durTime = time.Now().Sub(curTime).Seconds()
-	fmt.Printf("\t100000 elements:  %v seconds \n", durTime)
+	fmt.Printf("\t100000 elements and 10 random:  %v seconds \n", durTime)
+
+	curTime = time.Now()
+	mySort(hugaArrRand)
+	durTime = time.Now().Sub(curTime).Seconds()
+	fmt.Printf("\t100000 elements and 100000 random:  %v seconds \n", durTime)
 
 }

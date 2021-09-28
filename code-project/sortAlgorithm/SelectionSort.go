@@ -1,5 +1,7 @@
 package sortAlgorithm
 
+import "program-algorithm/lib"
+
 func SelectionSort(nums []int) {
 	var length int = len(nums)
 
@@ -44,4 +46,9 @@ func SelectionSortAdvanced(nums []int) {
 		left++
 		right--
 	}
+}
+
+func SelectionSortTest() {
+	lib.SortDuration(SelectionSort, "SelectionSort")
+	lib.SortDuration(SelectionSortAdvanced, "SelectionSortAdvanced")
 }

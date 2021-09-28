@@ -10,5 +10,9 @@ func main() {
 	//stackAndQueue.MinStackTest()
 	//stackAndQueue.TwoStackQueueTest()
 	//stackAndQueue.ReverseTest()
-	sortAlgorithm.PrintOddTimesNums2Test()
+	//sortAlgorithm.PrintOddTimesNums2Test()
+	//sortAlgorithm.SelectionSortTest()
+	//sortAlgorithm.InsertionSortTest()
+	//sortAlgorithm.BubbleSortTest()
+	sortAlgorithm.ShellSortTest()
 }
