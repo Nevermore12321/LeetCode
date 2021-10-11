@@ -14,5 +14,8 @@ func main() {
 	//sortAlgorithm.SelectionSortTest()
 	//sortAlgorithm.InsertionSortTest()
 	//sortAlgorithm.BubbleSortTest()
-	sortAlgorithm.ShellSortTest()
+	//sortAlgorithm.ShellSortTest()
+	//sortAlgorithm.MergeSortTest()
+	sortAlgorithm.QuickSortTest()
+	//sortAlgorithm.DijkstraQuickSortTest()
 }
