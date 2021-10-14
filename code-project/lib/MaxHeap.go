@@ -14,7 +14,7 @@ type MaxHeap struct {
 }
 
 func MaxHeapInit(capacity int) *MaxHeap {
-	data := make([]int, capacity)
+	data := make([]int, capacity + 1)
 	maxHeap := new(MaxHeap)
 
 	maxHeap.data = data

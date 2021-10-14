@@ -1,6 +1,6 @@
 package main
 
-import "program-algorithm/lib"
+import "program-algorithm/sortAlgorithm"
 
 func main() {
 
@@ -18,5 +18,6 @@ func main() {
 	//sortAlgorithm.MergeSortTest()
 	//sortAlgorithm.QuickSortTest()
 	//sortAlgorithm.DijkstraQuickSortTest()
-	lib.MaxHeapTest()
+	//lib.MaxHeapTest()
+	sortAlgorithm.HeapSortTest()
 }
