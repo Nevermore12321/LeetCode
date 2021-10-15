@@ -23,6 +23,28 @@ func MaxHeapInit(capacity int) *MaxHeap {
 	return maxHeap
 }
 
+//  用于堆排序的初始化函数
+func MaxHeapInitForSort(arr []int, capacity int) *MaxHeap {
+	//  建堆过程
+	//  创建 堆数组，从1开始存放
+	data := make([]int, capacity + 1)
+	maxHeap := new(MaxHeap)
+	maxHeap.data = data
+	maxHeap.count = 0
+
+	// 将数组的元素拷贝到堆中
+	maxHeap.count = capacity
+	for i := 0; i < len(arr); i++ {
+		maxHeap.data[i + 1] = arr[i]
+	}
+
+	// 从最后一个非叶子节点开始，向上依次执行 sink 操作
+	for i := capacity / 2; i >= 1; i-- {
+		maxHeap.__sink(i)
+	}
+	return maxHeap
+}
+
 func (m *MaxHeap) IsEmpty() bool {
 	return m.count == 0
 }
