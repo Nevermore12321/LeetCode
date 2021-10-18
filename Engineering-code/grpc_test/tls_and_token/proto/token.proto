@@ -1,0 +1,30 @@
+syntax = "proto3"; //  使用 protobuf3
+
+//  package 名称
+package proto;
+
+//
+option go_package = "./";
+
+
+//  定义发送请求信息
+message testRequest {
+  //  定义发送的参数
+  //  格式： 参数名 参数类型 = 标识号（不重复）
+  string name = 1;
+  int64 id = 2;
+}
+
+// 定义响应信息
+message testResponse {
+  //  定义响应的参数
+  //  格式： 参数名 参数类型 = 标识号（不重复）
+  int64 status = 1;
+  string value = 2;
+}
+
+// 定义服务
+//  可以定义多个服务，也可以在同一个服务中，定义多个函数接口
+service test {
+  rpc SayHello(testRequest) returns (testResponse) {};
+}

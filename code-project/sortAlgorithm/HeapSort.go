@@ -56,6 +56,7 @@ func sink(arr []int, k, n int) {
 		swap(arr, k , j)
 		k = j
 	}
+	
 }
 
 func HeapSort3(arr []int) {

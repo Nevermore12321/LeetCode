@@ -1,0 +1,26 @@
+syntax = "proto3"; //  使用 protobuf3
+
+//  package 名称
+package proto;
+
+// import path
+option go_package = "./";
+
+message StreamRequest{
+  // 定义发送的参数，采用驼峰命名方式，小写加下划线，如：student_name
+  // 参数类型 参数名 = 标识号(不可重复)
+  string data = 1;
+}
+
+
+message StreamResponse{
+  // 流式响应数据
+  string stream_value = 1;
+}
+
+
+// 定义服务（可定义多个服务,每个服务可定义多个接口）
+service StreamServer{
+  // 服务端流式rpc，在响应数据前添加stream
+  rpc ListValue(StreamRequest)returns(stream StreamResponse){};
+}

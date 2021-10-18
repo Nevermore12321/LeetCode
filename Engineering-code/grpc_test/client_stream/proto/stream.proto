@@ -1,0 +1,27 @@
+syntax = "proto3"; //  使用 protobuf3
+
+//  package 名称
+package proto;
+
+// import path
+option go_package = "./";
+
+//  流式请求
+message StreamRequest{
+  string stream_data = 1;
+}
+
+//  普通响应
+message SimpleResponse{
+  //  响应状态码
+  int64 status = 1;
+  //  响应值
+  string value = 2;
+}
+
+
+// 定义服务（可定义多个服务,每个服务可定义多个接口）
+service StreamClient{
+  // 客户端流式rpc，在请求的参数前添加stream, 也就是客户端的stream，客户端写，服务端读
+  rpc RouteList (stream StreamRequest) returns (SimpleResponse){};
+}
