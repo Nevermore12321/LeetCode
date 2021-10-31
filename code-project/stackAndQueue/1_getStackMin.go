@@ -73,6 +73,7 @@ func MinStackTest() {
 	stack.Push(1)
 	stack.Push(2)
 	stack.Push(1)
+	stack.Push(6)
 
 	fmt.Println(stack.GetMin())
 	stack.Pop()

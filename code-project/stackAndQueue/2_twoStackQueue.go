@@ -80,6 +80,7 @@ func TwoStackQueueTest() {
 	stack.Add(3)
 	stack.Add(4)
 	stack.Add(5)
+	stack.Add(6)
 
 	fmt.Println(stack.Peek())
 	fmt.Println(stack.Poll())

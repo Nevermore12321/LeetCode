@@ -28,6 +28,6 @@ func process(nums []int, L, R int) int {
 }
 
 func RecursionTest() {
-	nums := []int {1, 4, 2, 4, 5, 7, 4, 32, 2, 6, 4, 2, 6, 3, 6, 7}
+	nums := []int {1, 4, 2, 4, 5, 7, 4, 32, 2, 6, 7, 4, 2, 6, 3, 6, 7}
 	fmt.Println(GetMax(nums))
 }
