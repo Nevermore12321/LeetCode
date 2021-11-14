@@ -35,7 +35,7 @@
     1. 多个客户机就是宿主机中的多个QEMU进程，而一个客户机的多个vCPU就是一个QEMU进程中的多个线程。
     2. 和普通操作系统一样，在客户机系统中，同样分别运行着客户机的内核和客户机的用户空间应用程序。
 
-### SMP的支持
+### SMP 的支持
 
 **SMP（Symmetric Multi-Processor，对称多处理器）系统**：是一种多处理器的电脑硬件架构，在对称多处理架构下，每个处理器的地位都是平等的，对资源的使用权限相同。
 
@@ -69,7 +69,7 @@ echo $core_per_phy_cpu
 
 echo -n "logical CPU number in a physical CPU: "
 #每个物理CPU中逻辑CPU(可能是core、threads或both)的个数
-logical_cpu_per_phy_cpu=$(cat /proc/cpuinfo | grep "siblings" | sort | uniq | awk- F: '{print $2}')
+logical_cpu_per_phy_cpu=$(cat /proc/cpuinfo | grep "siblings" | sort | uniq | awk -F: '{print $2}')
 echo $logical_cpu_per_phy_cpu
 
 #是否打开超线程，以及每个core上的超线程数目
@@ -119,7 +119,7 @@ fi
 
 KVM 允许 CPU 的过载使用，但是并不推荐在实际的生产环境（特别是负载较重的环境）中过载使用 CPU。在生产环境中过载使用 CPU，有必要在部署前进行严格的性能和稳定性测试。
 
-### CPU模型
+### CPU 模型
 
 每一种虚拟机管理程序（Virtual Machine Monitor，简称 VMM 或 Hypervisor）都会定义自己的策略，让客户机看起来有一个默认的 CPU 类型。**也就是 VMM 通过策略，定义客户机中 vCPU 的类型**。
 
@@ -169,5 +169,77 @@ x86 host KVM processor with all supported host features (only available in KVM m
 
 **在 qemu 命令行中，可以用 “-cpu cpu_model” 来指定在客户机中的CPU模型。**
 
-### 进程的处理器亲和性和vCPU的绑定
+### 进程的处理器亲和性和 vCPU 的绑定
+
+通常在 SMP 系统中，Linux 内核的**进程调度器**根据自有的调度策略将系统中的一个进程调度到某个 CPU 上执行。
+
+例如：一个进程在前一个执行时间是在 cpuM（M为系统中的某 CPU 的 ID）上运行，而在后一个执行时间是在 cpuN（N 为系统中另一 CPU 的 ID）上运行。因为 Linux 对进程执行的调度采用时间片法则（即用完自己的时间片即被暂停执行），而在默认情况下，一个普通进程或线程的处理器亲和性体现在所有可用的 CPU 上，进程或线程有可能在这些 CPU 之中的任何一个（包括超线程）上执行
+
+**进程的处理器亲和性（Processor Affinity）**：即 CPU 的绑定设置，<u>是指将进程绑定到特定的一个或多个 CPU 上去执行，而不允许将进程调度到其他的 CPU 上</u>。Linux 内核对进程的调度算法也是遵守进程的处理器亲和性设置的。
+
+- 好处：可以减少进程在多个 CPU 之间交换运行带来的缓存命中失效（cache missing），从该进程运行的角度来看，可能带来一定程度上的性能提升。
+- 坏处：破坏了原有 SMP 系统中各个 CPU 的负载均衡（load balance），这可能会导致整个系统的进程调度变得低效。
+
+每个 vCPU 都是宿主机中一个普通的 QEMU 线程，可以使用 taskset 工具对其设置处理器亲和性，使其绑定到某一个或几个固定的 CPU 上去调度。
+
+【实际案例】：提供一个有两个逻辑 CPU 计算能力的一个客户机，要求 CPU 资源独立被占用，不受宿主机中其他客户机的负载水平的影响。实现步骤为：
+
+1. 启动宿主机时隔离出两个逻辑CPU专门供一个客户机使用。也就是通过修改 linux 内核参数，使得某些 CPU 可以隔离，也就是设置了隔离的 CPU ，普通的默认进程不会被调度到被隔离的 CPU 上。具体的实现步骤：
+    1. 查看机器的逻辑 CPU 的个数。（注意：物理 CPU 就是实际的 CPU 槽数；每个 CPU 有多个核；如果没有开启超线程，那么逻辑 CPU 的个数 = 物理 CPU 的个数 * 每个 CPU 的核数；如果开启了超线程，那么 逻辑 CPU 的个数 >= 物理 CPU 的个数 * 每个 CPU 的核数
+    2. 修改 `/etc/tuned/realtime-variables.conf` 文件，添加 `isolcpus=参数`，表示设置哪几个 CPU 被隔离出来，不受 Linux 内核调度。
+    3. 激活配置文件，并且需要重启机器。下面就是用到的一些命令（Centos）：
+
+```bash
+1. 查看逻辑 CPU 个数：
+lscpu
+2. 修改隔离 CPU 的配置：
+ vim realtime-variables.conf 添加 isolated_cores=0-3,5,7 
+3. 激活隔离 CPU
+tuned-adm profile realtime
+4. 解除隔离 CPU
+tuned-adm profile balanced
+5. 每次添加隔离 CPU 或者解除隔离 CPU 都需要重启才会生效。
+6. 查看隔离 CPU 是否生效：
+cat /proc/cmdline
+```
+
+2. 在设置了隔离 CPU 后，就可以启动虚拟客户机，来使得客户机的 vCPU 绑定到宿主机的这两个隔离的 CPU 上。过程如下：
+    1. 启动一个客户机 ： `qemu-system-x86_64 -enable-kvm -smp 2 -m 4G rhel7.img -daemonize`
+    2. 查看代表 vCPU 的 QEMU 线程 `ps -eLo ruser,pid,ppid,lwp,psr,args | grep qemu | grep -v grep`
+    3. 绑定代表整个客户机的 QEMU 进程号，使其运行在 cpu4 上 : `taskset -pc 4 8645`
+    4. 后面继续绑定另一个 QEMU 进程，使其运行在特定的 CPU 上。
+
+
+
+注意：上述过程用到了两个重要的命令：
+
+- `taskset-pc cpulist pid` - 将进程号为 pid 的进程，绑定到一系列 cpulist 上
+- `ps -eLo ruser,pid,ppid,lwp,psr,args` - ps 命令显示当前系统的进程信息的状态
+    - “-e” ： 参数用于显示所有的进程
+    - “-L”：参数用于将线程（light-weight process，LWP）也显示出来
+    - “-o”：参数表示以用户自定义的格式输出
+        - “psr”：表示当前分配给进程运行的处理器编号
+        - “lwp”：列表示线程的ID
+        - “ruser”：表示运行进程的用户
+        - “pid”：表示进程的ID
+        - “ppid”：表示父进程的ID
+        - “args”：表示运行的命令及其参数）
+
+
+
+实际操作：
+
+1. 
+
+【总结】：
+
+总的来说，<u>在 KVM 环境中，一般并不推荐手动设置 QEMU 进程的处理器亲和性来绑定 vCPU</u>，但是，在非常了解系统硬件架构的基础上，**根据实际应用的需求，可以将其绑定到特定的 CPU 上，从而提高客户机中的 CPU 执行效率或实现 CPU 资源独享的隔离性**。
+
+**NUMA**（Non-Uniform Memory Access，非一致性内存访问）是一种在多处理系统中的内存设计架构，在多处理器中，CPU 访问系统上各个物理内存的速度可能不一样，一个 CPU 访问其本地内存的速度比访问（同一系统上）其他 CPU 对应的本地内存快一些。
+
+比如一台机器是有 2 个处理器，有 4 个内存块。将1个处理器和两个内存块合起来，称为一个 NUMA node，这样这个机器就会有两个 NUMA node。在物理分布上，NUMA node 的处理器和内存块的物理距离更小，因此访问也更快。
+
+
+
+## 2. 内存配置
 
