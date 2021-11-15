@@ -34,4 +34,9 @@ pip3 download \
     -r requirement.txt    		# 指定要下载的包
 ```
 
-6. 
+6. 使用私有 pip 仓库，进行安装
+
+```bash
+pip3 install --index-url http://10.10.23.20:8080/simple/ --trusted-host 10.10.23.20 flask
+```
+
