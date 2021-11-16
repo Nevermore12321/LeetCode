@@ -263,3 +263,110 @@ cat /proc/cmdline
 
 ## 2. 内存配置
 
+内存是与 CPU 沟通的一个桥梁，其作用是暂时存放 CPU 中将要执行的指令和数据，所有程序都必须先载入内存中才能够执行。
+
+### 内存设置基本参数
+
+在通过 qemu 命令行启动客户机时设置内存大小的参数如下：
+
+```bash
+-m megs #设置客户机的内存为megs MB大小
+```
+
+注意：默认的单位为 MB，也支持加上“M”或“G”作为后缀来显式指定使用 MB 或 GB 作为内存分配的单位。如果不设置 -m 参数，QEMU 对客户机分配的内存大小默认值为 128MB
+
+### EPT 和 VPID 简介
+
+**EPT（Extended Page Tables，扩展页表）**，属于 Intel 的第二代硬件虚拟化技术，它是**针对内存管理单元（MMU）的虚拟化扩展。**
+
+- EPT 降低了内存虚拟化的难度（与影子页表相比），也提升了内存虚拟化的性能。
+- 从基于 Intel 的 Nehalem 架构的平台开始，EPT 就作为 CPU 的一个特性加入 CPU 硬件中了。（<u>从硬件上支持内存虚拟化</u>）
+
+**地址转换**：
+
+【目的】：在客户机操作系统看来，客户机可用的内存空间也是一个从零地址开始的连续的物理内存空间。
+
+【过程】：Hypervisor（即 KVM）引入了一层新的地址空间，即**客户机物理地址空间（HPA）**，这个地址空间<u>不是真正的硬件上的地址空间，它们之间还有一层映射</u>。所以，在虚拟化环境下，内存使用就需要两层的地址转换，即<u>客户机应用程序可见的客户机虚拟地址（Guest Virtual Address，GVA）到客户机物理地址（Guest Physical Address，GPA）的转换</u>，<u>再从客户机物理地址（GPA）到宿主机物理地址（Host Physical Address，HPA）的转换</u>。其中，前一个转换由客户机操作系统来完成，而后一个转换由 Hypervisor 来负责。
+
+在 EPT 出现之前，使用**影子页表（Shadow Page Tables）**实现（如下图）：
+
+![影子页表的作用](https://raw.githubusercontent.com/Nevermore12321/LeetCode/blog/%E4%BA%91%E8%AE%A1%E7%AE%97/kvm/%E5%BD%B1%E5%AD%90%E9%A1%B5%E8%A1%A8%E7%9A%84%E4%BD%9C%E7%94%A8.PNG)
+
+注意：
+
+- 从软件上维护了从客户机虚拟地址（GVA）到宿主机物理地址（HPA）之间的映射，<u>每一份客户机操作系统的页表也对应一份影子页表</u>
+- <u>Hypervisor 将影子页表载入物理上的内存管理单元（Memory Management Unit，MMU）中进行地址翻译</u>
+- 在普通的内存访问时都可实现从 GVA 到 HPA 的直接转换，从而避免了上面前面提到的两次地址转换。
+
+影子页表实现的缺点：
+
+- 实现非常复杂，导致其开发、调试和维护都比较困难
+- 影子页表的内存开销也比较大，因为需要为每个客户机进程对应的页表的都维护一个影子页表
+
+为了克服影子页表的缺点，Intel 的 CPU 提供了 **EPT 技术**（AMD 提供的类似技术叫作 NPT，即 Nested Page Tables），**直接在硬件上支持 GVA→GPA→HPA 的两次地址转换，从而降低内存虚拟化实现的复杂度，也进一步提升了内存虚拟化的性能。**（如下图）
+
+![EPT基本原理](https://raw.githubusercontent.com/Nevermore12321/LeetCode/blog/%E4%BA%91%E8%AE%A1%E7%AE%97/kvm/EPT%E5%9F%BA%E6%9C%AC%E5%8E%9F%E7%90%86.PNG)
+
+注意：
+
+- CR3（控制寄存器3）将客户机程序所见的客户机虚拟地址（GVA）转化为客户机物理地址（GPA），然后再通过EPT将客户机物理地址（GPA）转化为宿主机物理地址（HPA）
+- 两次地址转换都是由CPU硬件来自动完成的，其转换效率非常高
+- EPT只需要维护一张EPT页表，而不需要像“影子页表”那样为每个客户机进程的页表维护一张影子页表，从而也减少了内存的开销
+
+
+
+**VPID（Virtual Processor Identifiers，虚拟处理器标识）**是<u>在硬件上对 TLB 资源管理的优化，通过在硬件上为每个 TLB 项增加一个标识，用于不同的虚拟处理器的地址空间，从而能够区分 Hypervisor 和不同处理器的 TLB</u>。
+
+其中，**TLB（translation lookaside buffer，旁路转换缓冲）**是<u>内存管理硬件以提高虚拟地址转换速度的缓存</u>。TLB 是页表（page table）的缓存，保存了一部分页表。
+
+EPT  结合 VPID 的优势：
+
+- 硬件区分了不同的 TLB 项分别属于不同虚拟处理器，因此可以避免每次进行 VM-Entry 和 VM-Exit 时都让 TLB 全部失效，提高了 VM 切换的效率。
+- 由于有了这些在 VM 切换后仍然继续存在的 TLB 项，硬件减少了一些不必要的页表访问，减少了内存访问次数，从而提高了 Hypervisor 和客户机的运行速度。
+- VPID 也会对客户机的实时迁移（Live Migration）有很好的效率提升，会节省实时迁移的开销，提升实时迁移的速度，降低迁移的延迟（Latency）。
+
+
+
+【查看系统是否支持 EPT 和 VPID 功能】：
+
+1. 查看 /proc/cpuinfo 中的 CPU 标志
+
+```bash
+[root@bogon ~]# grep -E "ept|vpid" /proc/cpuinfo
+flags           : fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush dts acpi mmx fxsr sse sse2 ss ht tm pbe syscall nx rdtscp lm constant_tsc arch_perfmon pebs bts rep_good nopl xtopology nonstop_tsc aperfmperf eagerfpu pni dtes64 monitor ds_cpl vmx est tm2 ssse3 cx16 xtpr pdcm sse4_1 sse4_2 popcnt lahf_lm ssbd ibrs ibpb stibp tpr_shadow vnmi flexpriority ept vpid dtherm ida arat spec_ctrl intel_stibp flush_l1d
+```
+
+2. 根据 sysfs 文件系统中 kvm_intel 模块
+
+```bash
+[root@bogon ~]# cat /sys/module/kvm_intel/parameters/ept
+Y
+[root@bogon ~]# cat /sys/module/kvm_intel/parameters/vpid
+Y
+```
+
+【打开或关闭 EPT 和 VPID 特性】：设置 ept 和 vpid 参数的值来打开或关闭 EPT 和 VPID。如果 kvm_intel 模块已经处于加载状态，则需要先卸载这个模块，在重新加载之时加入所需的参数设置。
+
+```bash
+[root@kvm-host ~]# modprobe kvm_intel ept=0,vpid=0
+[root@kvm-host ~]# rmmod kvm_intel
+[root@kvm-host ~]# modprobe kvm_intel ept=1,vpid=1
+```
+
+注意：一般不要手动关闭 EPT 和 VPID 功能，否则会导致客户机中内存访问的性能下降。
+
+### 内存过载使用
+
+与 CPU 过载使用类似，**在 KVM 中内存也是允许过载使用（over-commit）的，KVM 能够让分配给客户机的内存总数大于实际可用的物理内存总数。**
+
+**原理**：<u>KVM 中客户机是一个 QEMU 进程</u>，宿主机系统没有特殊对待它而分配特定的内存给 QEMU，只是把它当作一个普通 Linux 进程。**Linux 内核在进程请求更多内存时才分配给它们更多的内存，所以也是在客户机操作系统请求更多内存时，KVM 才向其分配更多的内存**。
+
+有如下 3 种方式来实现内存的过载使用：
+
+1. **内存交换（swapping）**：用交换空间（swap space）来弥补内存的不足。
+    1. 用 swapping 方式来让内存过载使用，要求有足够的交换空间（swap space）来满足所有的客户机进程和宿主机中其他进程所需内存
+    2. **可用的物理内存空间和交换空间的大小之和应该等于或大于配置给所有客户机的内存总和**，否则，在各个客户机内存使用同时达到较高比率时，可能会有客户机（因内存不足）被强制关闭
+2. **气球（ballooning）**：通过 virio_balloon 驱动来实现宿主机 Hypervisor 和客户机之间的协作。
+3. **页共享（page sharing）**：通过 KSM（Kernel Samepage Merging）合并多个客户机进程使用的相同内存页。
+
+注意：KVM 允许内存过载使用，但在生产环境中配置内存的过载使用之前，仍然应该根据实际应用进行充分的测试。
