@@ -1,2 +1,3 @@
-genisoimage -o /repos/repos.iso -J -R /repos/centos-8-x86_64
 
+
+CentOS系统下关于使用国内Yum源，本地Yum源，私有Yum源的整体解决方案，搞定“软件依赖关系问题”！
