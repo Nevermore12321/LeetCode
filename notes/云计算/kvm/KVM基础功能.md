@@ -370,3 +370,184 @@ Y
 3. **页共享（page sharing）**：通过 KSM（Kernel Samepage Merging）合并多个客户机进程使用的相同内存页。
 
 注意：KVM 允许内存过载使用，但在生产环境中配置内存的过载使用之前，仍然应该根据实际应用进行充分的测试。
+
+
+
+## 3. 存储配置
+
+### 存储配置和启动顺序
+
+QEMU 提供了对多种块存储设备的模拟，包括 IDE 设备、SCSI 设备、软盘、U 盘、virtio 磁盘等，而且对设备的启动顺序提供了灵活的配置。
+
+在qemu命令行工具中，主要有如下的参数来配置客户机的存储:
+
+**存储的基本配置选项:**
+
+- -hda file
+  将file镜像文件作为客户机中的第1个IDE设备（序号0），在客户机中表现为/dev/hda设备（若客户机中使用PIIX_IDE驱动）或/dev/sda设备（若客户机中使用ata_piix驱动）。
+
+- -hdb file
+  将file作为客户机中的第2个IDE设备（序号1），在客户机中表现为/dev/hdb或/dev/sdb设备。
+
+- -hdc file
+  将file作为客户机中的第3个IDE设备（序号2），在客户机中表现为/dev/hdc或/dev/sdc设备。
+
+- -hdd file
+  将file作为客户机中的第4个IDE设备（序号3），在客户机中表现为/dev/hdd或/dev/sdd设备。
+
+- -fda file
+  将file作为客户机中的第1个软盘设备（序号0），在客户机中表现为/dev/fd0设备。也可以将宿主机中的软驱（/dev/fd0）作为-fda的file来使用。
+
+- -fdb file
+  将file作为客户机中的第2个软盘设备（序号1），在客户机中表现为/dev/fd1设备。
+
+- -cdrom file
+
+  将file作为客户机中的光盘CD-ROM，在客户机中通常表现为/dev/cdrom设备。-cdrom参数不能和-hdc参数同时使用，因为“-cdrom”就是客户机中的第3个IDE设备
+
+- -mtdblock file
+  使用file文件作为客户机自带的一个Flash存储器（通常说的闪存）。
+
+- -sd file
+  使用file文件作为客户机中的SD卡（Secure Digital Card）。
+
+- -pflash file
+  使用file文件作为客户机的并行Flash存储器（Parallel Flash Memory）。
+
+**配置客户机启动顺序的参数:**
+
+启动顺序可以用如下的参数设定：
+
+```bash
+-boot [order=drives][,once=drives][,menu=on|off] [,splash=splashfile] [,splash-time=sp-time]
+```
+
+<u>用“a”，“b”分别表示第 1 个和第 2 个软驱，用 “c” 表示第 1 个硬盘，用“d”表示 CD-ROM 光驱，用 “n” 表示从网络启动。</u>
+
+- 默认从硬盘启动，要从光盘启动可以设置 “-boot order=d”。
+- “once” 表示设置第1次启动的启动顺序，在系统重启（reboot）后该设置即无效，如 “-boot once=d”设置表示本次从光盘启动，但系统重启后从默认的硬盘启动。
+- “memu=on|off”用于设置交互式的启动菜单选项（前提是使用的客户机BIOS支持），它的默认值是“menu=off”，表示不开启交互式的启动菜单选择。
+- “splash=splashfile”和“splash-time=sp-time”选项都是在“menu=on”时才有效，将名为splashfile的图片作为logo传递给BIOS来显示；而sp-time是BIOS显示splash图片的时间，其单位是毫秒（ms）
+
+### qemu-img 命令
+
+**qemu-img是QEMU的磁盘管理工具**。
+
+qemu-img工具的命令行基本用法如下：
+
+```bash
+qemu-img [standard options] command [command options]
+```
+
+1. **check [-f fmt] filename**
+   1. 对磁盘镜像文件进行一致性检查，查找镜像文件中的错误，目前仅支持对 “qcow2”，“qed”，“vdi” 格式文件的检查。其中，qcow2 是目前使用最广泛的格式
+   2. 参数 -f fmt 是指定文件的格式，如果不指定格式，qemu-img 会自动检测。
+2. **create [-f fmt] [-o options] filename [size]**
+   1. 创建一个格式为 fmt，大小为 size，文件名为 filename 的镜像文件。
+   2. 根据文件格式 fmt 的不同，还可以添加一个或多个选项（options）来附加对该文件的各种功能设置。可以使
+      用“-o？”来查询某种格式文件支持哪些选项，在“-o”选项中各个选项用逗号来分隔。
+   3. size选项用于指定镜像文件的大小，其默认单位是字节（bytes），也可以支持k（即K）、M、G、T来分别表示kB、MB、GB、TB大小。
+3. **commit [-f fmt] filename**
+   1. 提交 filename 文件中的更改到后端支持镜像文件（创建时通过backing_file指定的）中。
+4. **convert [-c] [-f fmt] [-O output_fmt] [-o options] filename [filename2[...]] output_filename**
+   1. 将 fmt 格式的 filename 镜像文件根据 options 选项转换为格式为 output_fmt 的、名为 output_filename 的镜像文件。
+   2. 一般来说，输入文件格式fmt由qemu-img工具自动检测到，而输出文件格式output_fmt根据自己需要来指定，默认会被转换为raw文件格式（且默认使用稀疏文件的方式存储，以节省存储空间）。
+   3. “-c”参数表示对输出的镜像文件进行压缩，不过只有qcow2和qcow格式的镜像文件才支持压缩，并且这种压缩是只读的，如果压缩的扇区被重写，则会被重写为未压缩的数据。
+   4. 用“-o options”来指定各种选项，如后端镜像、文件大小、是否加密等。使用backing_file选项来指定后端镜像，使生成的文件成为copy-on-write的增量文件，这时必须让在转换命令中指定的后端镜像与输入文件的后端镜像的内容相同，尽管它们各自后端镜像的目录和格式可能不同。
+5. **info [-f fmt] filename**
+   1. 展示filename镜像文件的信息
+6. **snapshot [-l | -a snapshot | -c snapshot | -d snapshot] filename**
+   1. “-l” 选项表示查询并列出镜像文件中的所有快照
+   2. 
+   3. “-a snapshot”表示让镜像文件使用某个快照
+   4. “-c snapshot”表示创建一个快照
+   5. “-d”表示删除一个快照。
+7. **rebase [-f fmt] [-t cache] [-p] [-u] -b backing_file [-F backing_fmt] filename**
+   1. 改变镜像文件的后端镜像文件，只有qcow2和qed格式支持rebase命令。
+   2. 使用“-b backing_file”中指定的文件作为后端镜像，后端镜像也被转化为“-F backing_fmt”中指定的后端镜像格式。
+   3. 命令可以工作于两种模式：
+      1. 一种是安全模式（Safe Mode），这是默认的模式，qemu-img会根据比较原来的后端镜像与现在的后端镜像的不同进行合理的处理
+      2. 另一种是非安全模式（Unsafe Mode），是通过“-u”参数来指定的，这种模式主要用于将后端镜像重命名或移动位置后对前端镜像文件的修复处理，由用户去保证后端镜像的一致性。
+8. **resize filename [+ | -] size**
+   1. 改变镜像文件的大小，使其不同于创建之时的大小。
+   2. “+”和“-”分别表示增加和减少镜像文件的大小，size也支持K、M、G、T等单位的使用。
+   3. 缩小镜像的大小之前，需要在客户机中保证其中的文件系统有空余空间，否则数据会丢失。在增加了镜像文件大小后，也需启动客户机在其中应用“fdisk”“parted”等分区工具进行相应的操作，才能真正让客户机使用到增加后的镜像空间。
+   4. qcow2格式文件不支持缩小镜像的操作
+
+### QEMU支持的镜像文件格式
+
+qemu-img支持非常多种的文件格式，可以通过“qemu-img-h”查看其命令帮助得到，<u>它支持20多种格式：file，quorum，blkverify，luks，dmg，sheepdog，parallels，nbd，vpc，bochs，blkdebug，qcow2，vvfat，qed，host_cdrom，cloop，vmdk，host_device，qcow，vdi，null-aio，blkreplay，null-co，raw等</u>
+
+常用的几种文件格式：
+
+1. raw 格式
+
+   原始的磁盘镜像格式，也是qemu-img命令默认的文件格式。镜像文件只有在被写有数据的扇区才会真正占用磁盘空间，从而节省磁盘空间。
+
+   raw格式只有一个参数选项：preallocation。它有3个值：off，falloc，full。
+
+   - off ：就是禁止预分配空间，即采用稀疏文件方式，这是默认值。
+   - falloc ：是qemu-img创建镜像时候调用posix_fallocate()函数来预分配磁盘空间给镜像文件（但不往其中写入数据，所以也能瞬时完成）。
+   - full ：是除了实实在在地预分配空间以外，还逐字节地写0，所以很慢。
+
+2. qcow2 格式
+
+   <u>qcow2是QEMU目前推荐的镜像格式，它是使用最广、功能最多的格式</u>。它支持**稀疏文件**（即支持空洞）以节省存储空间，它支持可选的AES加密以提高镜像文件安全性，支持基于zlib的压缩，支持在一个镜像文件中有多个虚拟机快照。
+
+   **稀疏文件**是计算机系统块设备中能有效利用磁盘空间的文件类型，它<u>用元数据（metadata）中的简要描述来标识哪些块是空的，只有在空间被实际数据占用时，才将数据实际写到磁盘中。</u>
+
+   在qemu-img命令中，qcow2支持如下几个选项：
+
+   - size，指定镜像文件的大小。等同于`qemu-img create-f fmt<文件名>size`
+   - compat（兼容性水平，compatibility level），可以等于0.10或者1.1，表示适用于0.10版本以后的QEMU，或者是1.1版本以后的QEMU。
+   - backing_file，用于指定后端镜像文件
+   - backing_fmt，设置后端镜像的镜像格式。
+   - cluster_size，设置镜像中簇的大小，取值为512B～2MB，默认值为64kB。较小的簇可以节省镜像文件的空间，而较大的簇可以带来更好的性能，需要根据实际情况来平衡。一般采用默认值即可。
+   - preallocation，设置镜像文件空间的预分配模式，其值可为off、falloc、full、metadata。前3种与raw格式的类似，metadata模式用于设置为镜像文件预分配metadata的磁盘空间，所以这种方式生成的镜像文件稍大一点，不过在其真正分配空间写入数据时效率更高。生成镜像文件的大小依次是off<metadata<falloc=full，性能上full最好，其他3种依次递减。
+   - encryption，用于设置加密，该选项将来会被废弃，不推荐使用。对于需要加密镜像的需求，推荐使用Linux本身的Linux dm-crypt/LUKS系统。
+   - lazy_refcounts，用于延迟引用计数（refcount）的更新，可以减少metadata的I/O操作，以达到提高performance的效果。适用于cache=writethrough这类不会自己组合metadata操作的情况。它的缺点是一旦客户机意外崩溃，下次启动时会隐含一次qemu-img check-rall的操作，需要额外花费点时间。它是当compact=1.1时才有的选项。
+   - refcount_bits，一个引用计数的比特宽度，默认为16。
+
+3. vdi 格式
+
+   兼容Oracle（Sun）VirtualBox1.1的镜像文件格式（Virtual Disk Image）。
+
+4. vmdk 格式
+
+   兼容VMware 4版本以上的镜像文件格式（Virtual Machine Disk Format）。
+
+5. vpc 格式
+
+   兼容Microsoft的Virtual PC的镜像文件格式（Virtual Hard Disk format）
+
+6. vhdx 格式
+
+   兼容Microsoft Hyper-V的镜像文件格式。
+
+### 客户机存储方式
+
+在QEMU/KVM中，客户机镜像文件可以由很多种方式来构建，其中几种如下：
+
+- 本地存储的客户机镜像文件。
+- 物理磁盘或磁盘分区。
+- LVM（Logical Volume Management），逻辑分区。
+- NFS（Network File System），网络文件系统。
+- iSCSI（Internet Small Computer System Interface），基于Internet的小型计算机系统接口。
+- 本地或光纤通道连接的LUN（Logical Unit Number）。
+- GFS2（Global File System 2）。
+
+## 4. 网络配置
+
+### 用QEMU实现的网络模式
+
+常见的可以实现以下4种网络形式：
+
+- 基于网桥（bridge）的虚拟网络。
+- 基于NAT（Network Addresss Translation）的虚拟网络。
+- QEMU内置的用户模式网络（user mode networking）。
+- 直接分配网络设备从而直接接入物理网络（包括VT-d和SR-IOV）。
+
+在新的QEMU中，推荐用-device+-netdev组合的方式。
+
+- -device囊括了所有QEMU模拟的前端的参数指定，也就是客户机里看到的设备（包括本章的网卡设备）；
+- -netdev指定的是网卡模拟的后端方式，也就是本节后面要讲的各种QEMU实现网络的方式
