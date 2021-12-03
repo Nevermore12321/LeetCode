@@ -355,6 +355,7 @@ extras                                CentOS-8 - Extras - mirrors.aliyun.com
 
    ```bash
    [root@localhost ~]# genisoimage -J -o /repos.iso /repos/centos-8-x86_64
+   [root@localhost ~]# genisoimage -joliet-long -o /repos.iso /repos/centos-8-x86_64
    ```
 
 4. 将生成的 repos.iso 文件，拷贝到 **私有 yum 源服务器** ，然后在 私有 yum 源服务器 配置使用该 iso 文件的 yum 源
