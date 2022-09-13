@@ -2,11 +2,13 @@ package BinarySearch
 
 
 
+
 func FindMin(nums []int) int {
 	if len(nums) == 0 || nums[0] < nums[len(nums) - 1]{
 		return nums[0]
 	}
 
+	// 二分查找
 	var binarySearch func(l, r int) int
 	binarySearch = func(l, r int) int {
 		if l > r {

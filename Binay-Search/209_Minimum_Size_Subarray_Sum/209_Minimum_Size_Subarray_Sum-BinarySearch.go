@@ -26,6 +26,8 @@ func minSubArrayLen(target int, nums []int) int {
 		}
 		return l
 	}
+	
+	// 取最小值
 	minInt := func(a, b int) int {
 		if a < b {
 			return a
