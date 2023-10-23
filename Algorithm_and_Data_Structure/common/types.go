@@ -10,3 +10,7 @@ type Number interface {
 type CustomComparable interface {
 	Equals(any) bool
 }
+
+type CustomStruct interface {
+	CompareTo(any) int
+}
