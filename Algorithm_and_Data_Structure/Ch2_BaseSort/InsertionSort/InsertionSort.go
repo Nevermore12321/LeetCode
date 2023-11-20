@@ -44,3 +44,22 @@ func SortAdvance[T int | int32 | int64 | float32 | float64 | uint | uint32 | uin
 
 	}
 }
+
+func SortAdvance2[T int | int32 | int64 | float32 | float64 | uint | uint32 | uint64](arr []T, l, r int) {
+	for i := l; i <= r; i++ {
+		// 临时变量存放 arr[j]，每次比较，如果比前一个小，后移
+		var (
+			j   int = 0
+			tmp T   = arr[i]
+		)
+		for j = i; j-1 >= l; j-- {
+			if tmp < arr[j-1] {
+				arr[j] = arr[j-1] // 后移
+			} else {
+				break
+			}
+		}
+		arr[j] = tmp
+
+	}
+}
