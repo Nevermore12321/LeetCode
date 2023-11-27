@@ -3,11 +3,12 @@ package SortHelper
 import (
 	"Algorithm_and_Data_Structure/Ch2_BaseSort/InsertionSort"
 	"Algorithm_and_Data_Structure/Ch2_BaseSort/SelectionSort"
-	"Algorithm_and_Data_Structure/Ch6_MergeSearch/MergeSort"
-	"Algorithm_and_Data_Structure/Ch6_MergeSearch/MergeSortAdvance"
-	"Algorithm_and_Data_Structure/Ch6_MergeSearch/MergeSortAdvance2"
-	"Algorithm_and_Data_Structure/Ch6_MergeSearch/MergeSortAdvance3"
-	"Algorithm_and_Data_Structure/Ch6_MergeSearch/MergeSortBottomUp"
+	"Algorithm_and_Data_Structure/Ch6_MergeSort/MergeSort"
+	"Algorithm_and_Data_Structure/Ch6_MergeSort/MergeSortAdvance"
+	"Algorithm_and_Data_Structure/Ch6_MergeSort/MergeSortAdvance2"
+	"Algorithm_and_Data_Structure/Ch6_MergeSort/MergeSortAdvance3"
+	"Algorithm_and_Data_Structure/Ch6_MergeSort/MergeSortBottomUp"
+	"Algorithm_and_Data_Structure/Ch7_QuickSort/QuickSort"
 	"fmt"
 	"time"
 )
@@ -41,6 +42,8 @@ func SortTest[T int | int32 | int64 | float32 | float64 | uint | uint32 | uint64
 		MergeSortAdvance3.Sort(arr)
 	case "MergeSortBottomUp":
 		MergeSortBottomUp.Sort(arr)
+	case "QuickSort":
+		QuickSort.Sort(arr)
 	}
 	duration := time.Since(startTime)
 	fmt.Printf("%s, %d elements, use: %v\n", sortName, len(arr), duration)
